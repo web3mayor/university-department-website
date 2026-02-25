@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { Megaphone, Calendar, Trash2 } from 'lucide-react';
+import { Megaphone, Calendar, Trash2, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
+import { AnimatePresence } from 'motion/react';
 
 interface Announcement {
   id: number;
@@ -18,6 +19,7 @@ export default function News() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const { user, token } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [postToDelete, setPostToDelete] = useState<number | null>(null);
 
   const fetchAnnouncements = () => {
     fetch('/api/announcements')
@@ -33,8 +35,6 @@ export default function News() {
   }, []);
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this announcement?')) return;
-    
     const res = await fetch(`/api/announcements/${id}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${token}` }
@@ -43,6 +43,7 @@ export default function News() {
     if (res.ok) {
       setAnnouncements(announcements.filter(a => a.id !== id));
     }
+    setPostToDelete(null);
   };
 
   return (
@@ -100,7 +101,7 @@ export default function News() {
                       </div>
                       {user?.role === 'admin' && (
                         <button
-                          onClick={() => handleDelete(item.id)}
+                          onClick={() => setPostToDelete(item.id)}
                           className="p-2 text-slate-300 hover:text-red-500 transition-colors"
                         >
                           <Trash2 className="h-5 w-5" />
@@ -129,6 +130,37 @@ export default function News() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {postToDelete && (
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative"
+            >
+              <h2 className="text-xl font-bold text-slate-900 mb-4">Confirm Deletion</h2>
+              <p className="text-slate-600 mb-6">Are you sure you want to delete this announcement? This action cannot be undone.</p>
+              <div className="flex justify-end space-x-4">
+                <button
+                  onClick={() => setPostToDelete(null)}
+                  className="px-4 py-2 text-slate-500 font-bold hover:text-slate-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDelete(postToDelete)}
+                  className="px-4 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all"
+                >
+                  Delete Announcement
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

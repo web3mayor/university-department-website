@@ -35,6 +35,7 @@ export default function AdminResources() {
   const [levelFilter, setLevelFilter] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
+  const [resourceToDelete, setResourceToDelete] = useState<number | null>(null);
   const [status, setStatus] = useState({ type: '', message: '' });
 
   const [formData, setFormData] = useState({
@@ -100,7 +101,6 @@ export default function AdminResources() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this resource?')) return;
     try {
       const res = await fetch(`/api/admin/resources/${id}`, {
         method: 'DELETE',
@@ -114,6 +114,8 @@ export default function AdminResources() {
       }
     } catch (err) {
       showStatus('error', 'An error occurred');
+    } finally {
+      setResourceToDelete(null);
     }
   };
 
@@ -270,7 +272,7 @@ export default function AdminResources() {
                           <Edit2 className="h-5 w-5" />
                         </button>
                         <button 
-                          onClick={() => handleDelete(r.id)}
+                          onClick={() => setResourceToDelete(r.id)}
                           className="p-2 text-slate-400 hover:text-red-600 transition-colors"
                         >
                           <Trash2 className="h-5 w-5" />
@@ -375,6 +377,37 @@ export default function AdminResources() {
                   <span>{editingResource ? 'Update Resource' : 'Start Upload'}</span>
                 </button>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {resourceToDelete && (
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative"
+            >
+              <h2 className="text-xl font-bold text-slate-900 mb-4">Confirm Deletion</h2>
+              <p className="text-slate-600 mb-6">Are you sure you want to delete this resource? This action cannot be undone.</p>
+              <div className="flex justify-end space-x-4">
+                <button
+                  onClick={() => setResourceToDelete(null)}
+                  className="px-4 py-2 text-slate-500 font-bold hover:text-slate-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDelete(resourceToDelete)}
+                  className="px-4 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all"
+                >
+                  Delete Resource
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

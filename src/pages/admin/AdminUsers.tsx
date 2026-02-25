@@ -38,6 +38,7 @@ export default function AdminUsers() {
   const [search, setSearch] = useState('');
   const [levelFilter, setLevelFilter] = useState('all');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [studentToDelete, setStudentToDelete] = useState<number | null>(null);
   const [status, setStatus] = useState({ type: '', message: '' });
 
   const showStatus = (type: string, message: string) => {
@@ -68,7 +69,6 @@ export default function AdminUsers() {
   }, [token]);
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this student account? This action cannot be undone.')) return;
     try {
       const res = await fetch(`/api/admin/users/${id}`, {
         method: 'DELETE',
@@ -83,6 +83,8 @@ export default function AdminUsers() {
       }
     } catch (err) {
       showStatus('error', 'An error occurred while deleting');
+    } finally {
+      setStudentToDelete(null);
     }
   };
 
@@ -242,7 +244,7 @@ export default function AdminUsers() {
                           <Eye className="h-5 w-5" />
                         </button>
                         <button 
-                          onClick={() => handleDelete(s.id)}
+                          onClick={() => setStudentToDelete(s.id)}
                           className="p-2 text-slate-400 hover:text-red-600 transition-colors"
                         >
                           <Trash2 className="h-5 w-5" />
@@ -323,6 +325,37 @@ export default function AdminUsers() {
                   className="px-6 py-2 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all"
                 >
                   Close Profile
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {studentToDelete && (
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative"
+            >
+              <h2 className="text-xl font-bold text-slate-900 mb-4">Confirm Deletion</h2>
+              <p className="text-slate-600 mb-6">Are you sure you want to delete this student account? This action cannot be undone.</p>
+              <div className="flex justify-end space-x-4">
+                <button
+                  onClick={() => setStudentToDelete(null)}
+                  className="px-4 py-2 text-slate-500 font-bold hover:text-slate-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDelete(studentToDelete)}
+                  className="px-4 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all"
+                >
+                  Delete Student
                 </button>
               </div>
             </motion.div>

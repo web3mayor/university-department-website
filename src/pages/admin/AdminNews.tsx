@@ -34,6 +34,7 @@ export default function AdminNews() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<Announcement | null>(null);
+  const [postToDelete, setPostToDelete] = useState<number | null>(null);
   const [status, setStatus] = useState({ type: '', message: '' });
 
   // Form State
@@ -92,7 +93,6 @@ export default function AdminNews() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this post?')) return;
     const res = await fetch(`/api/announcements/${id}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${token}` }
@@ -100,7 +100,10 @@ export default function AdminNews() {
     if (res.ok) {
       fetchAnnouncements();
       showStatus('success', 'Post deleted successfully!');
+    } else {
+      showStatus('error', 'Failed to delete post');
     }
+    setPostToDelete(null);
   };
 
   const showStatus = (type: string, message: string) => {
@@ -234,7 +237,7 @@ export default function AdminNews() {
                   <Edit2 className="h-5 w-5" />
                 </button>
                 <button
-                  onClick={() => handleDelete(item.id)}
+                  onClick={() => setPostToDelete(item.id)}
                   className="p-2 text-slate-400 hover:text-red-600 transition-colors"
                   title="Delete"
                 >
@@ -330,6 +333,68 @@ export default function AdminNews() {
                     </button>
                   </div>
                 </form>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {postToDelete && (
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative"
+            >
+              <h2 className="text-xl font-bold text-slate-900 mb-4">Confirm Deletion</h2>
+              <p className="text-slate-600 mb-6">Are you sure you want to delete this post? This action cannot be undone.</p>
+              <div className="flex justify-end space-x-4">
+                <button
+                  onClick={() => setPostToDelete(null)}
+                  className="px-4 py-2 text-slate-500 font-bold hover:text-slate-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDelete(postToDelete)}
+                  className="px-4 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all"
+                >
+                  Delete Post
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {postToDelete && (
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative"
+            >
+              <h2 className="text-xl font-bold text-slate-900 mb-4">Confirm Deletion</h2>
+              <p className="text-slate-600 mb-6">Are you sure you want to delete this post? This action cannot be undone.</p>
+              <div className="flex justify-end space-x-4">
+                <button
+                  onClick={() => setPostToDelete(null)}
+                  className="px-4 py-2 text-slate-500 font-bold hover:text-slate-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDelete(postToDelete)}
+                  className="px-4 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all"
+                >
+                  Delete Post
+                </button>
               </div>
             </motion.div>
           </div>

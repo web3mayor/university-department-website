@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { FileText, Upload, Search, Filter, Download, Trash2, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { format } from 'date-fns';
@@ -22,6 +22,7 @@ export default function Materials() {
   const [showUpload, setShowUpload] = useState(false);
   const { user, token } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [materialToDelete, setMaterialToDelete] = useState<number | null>(null);
   const [status, setStatus] = useState({ type: '', message: '' });
 
   const showStatus = (type: string, message: string) => {
@@ -80,12 +81,12 @@ export default function Materials() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this material?')) return;
     const res = await fetch(`/api/materials/${id}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (res.ok) fetchMaterials();
+    setMaterialToDelete(null);
   };
 
   const filteredMaterials = materials.filter(m => {
@@ -189,7 +190,7 @@ export default function Materials() {
                   <div className="flex items-center space-x-2">
                     {user?.role === 'admin' && (
                       <button
-                        onClick={() => handleDelete(m.id)}
+                        onClick={() => setMaterialToDelete(m.id)}
                         className="p-2 text-slate-300 hover:text-red-500 transition-colors"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -296,6 +297,37 @@ export default function Materials() {
             </motion.div>
           </div>
         )}
+
+        {/* Delete Confirmation Modal */}
+        <AnimatePresence>
+          {materialToDelete && (
+            <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative"
+              >
+                <h2 className="text-xl font-bold text-slate-900 mb-4">Confirm Deletion</h2>
+                <p className="text-slate-600 mb-6">Are you sure you want to delete this material? This action cannot be undone.</p>
+                <div className="flex justify-end space-x-4">
+                  <button
+                    onClick={() => setMaterialToDelete(null)}
+                    className="px-4 py-2 text-slate-500 font-bold hover:text-slate-700"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => handleDelete(materialToDelete)}
+                    className="px-4 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all"
+                  >
+                    Delete Material
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
