@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+import { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface User {
-  id: number;
+  id: string;
   email: string;
   role: 'student' | 'admin';
   firstName: string;
@@ -23,27 +25,100 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedToken = localStorage.getItem('token');
-    const savedUser = localStorage.getItem('user');
-    if (savedToken && savedUser) {
-      setToken(savedToken);
-      setUser(JSON.parse(savedUser));
-    }
-    setLoading(false);
+    const initializeAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setToken(session.access_token);
+        
+        // Fetch user details from users table
+        const { data: userData } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+          
+        if (userData) {
+          setUser({
+            id: userData.id,
+            email: userData.email,
+            role: userData.role || 'student',
+            firstName: userData.first_name || 'User'
+          });
+        } else {
+          // Check admin table
+          const { data: adminData } = await supabase
+            .from('admin')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+            
+          if (adminData) {
+            setUser({
+              id: adminData.id,
+              email: adminData.email,
+              role: 'admin',
+              firstName: 'Admin'
+            });
+          }
+        }
+      }
+      setLoading(false);
+    };
+
+    initializeAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        setToken(session.access_token);
+        const { data: userData } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+          
+        if (userData) {
+          setUser({
+            id: userData.id,
+            email: userData.email,
+            role: userData.role || 'student',
+            firstName: userData.first_name || 'User'
+          });
+        } else {
+          const { data: adminData } = await supabase
+            .from('admin')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+            
+          if (adminData) {
+            setUser({
+              id: adminData.id,
+              email: adminData.email,
+              role: 'admin',
+              firstName: 'Admin'
+            });
+          }
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setToken(null);
+        setUser(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = (newToken: string, newUser: User) => {
     setToken(newToken);
     setUser(newUser);
-    localStorage.setItem('token', newToken);
-    localStorage.setItem('user', JSON.stringify(newUser));
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setToken(null);
     setUser(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
   };
 
   return (

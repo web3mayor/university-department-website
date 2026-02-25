@@ -12,7 +12,6 @@ import rateLimit from "express-rate-limit";
 import cors from "cors";
 import createDOMPurify from "dompurify";
 import { JSDOM } from "jsdom";
-import nodemailer from "nodemailer";
 
 const window = new JSDOM("").window;
 const DOMPurify = createDOMPurify(window as any);
@@ -23,67 +22,6 @@ const __dirname = path.dirname(__filename);
 const db = new Database("department.db");
 const JWT_SECRET = process.env.JWT_SECRET || "super-secret-key";
 const APP_URL = process.env.APP_URL || "http://localhost:3000";
-
-// Email Transporter
-const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST || "smtp.gmail.com",
-  port: Number(process.env.EMAIL_PORT) || 587,
-  secure: false,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
-
-const sendEmail = async (to: string, subject: string, html: string) => {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.log("Email credentials not configured. Skipping email send.");
-    return;
-  }
-  
-  try {
-    await transporter.sendMail({
-      from: process.env.EMAIL_FROM || '"Department of SLT" <noreply@dept.edu>',
-      to,
-      subject,
-      html,
-    });
-  } catch (error) {
-    console.error("Error sending email:", error);
-  }
-};
-
-const getEmailTemplate = (content: string, buttonText?: string, buttonUrl?: string) => `
-<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #334155; margin: 0; padding: 0; }
-    .container { max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
-    .header { background-color: #0f172a; color: #ffffff; padding: 40px 20px; text-align: center; }
-    .content { padding: 40px 30px; background-color: #ffffff; }
-    .footer { background-color: #f8fafc; color: #64748b; padding: 20px; text-align: center; font-size: 12px; border-top: 1px solid #e2e8f0; }
-    .button { display: inline-block; padding: 14px 28px; background-color: #2563eb; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 20px; }
-    h1 { margin: 0; font-size: 24px; }
-    p { margin-bottom: 20px; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>Science Laboratory Technology</h1>
-    </div>
-    <div class="content">
-      ${content}
-      ${buttonText && buttonUrl ? `<div style="text-align: center;"><a href="${buttonUrl}" class="button">${buttonText}</a></div>` : ""}
-    </div>
-    <div class="footer">
-      <p>&copy; ${new Date().getFullYear()} Department of Science Laboratory Technology</p>
-    </div>
-  </div>
-</body>
-</html>
-`;
 
 // Initialize Database
 db.exec(`
@@ -269,16 +207,6 @@ app.post("/api/register", (req, res) => {
       INSERT INTO users (firstName, lastName, email, phone, level, matricNumber, password, joinedDate)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `).run(firstName, lastName, email, phone, level, matricNumber, hashedPassword, joinedDate);
-    
-    // Send Welcome Email in background
-    const welcomeHtml = getEmailTemplate(
-      `<p>Hello ${firstName},</p>
-       <p>Welcome to the Department of Science Laboratory Technology!</p>
-       <p>You have successfully registered on the Science Laboratory Technology student portal. You can now access news, announcements, course materials and resources uploaded by the department.</p>`,
-      "Login to Portal",
-      `${APP_URL}/login`
-    );
-    sendEmail(email, "Welcome to the Department of Science Laboratory Technology", welcomeHtml);
 
     res.json({ id: info.lastInsertRowid });
   } catch (error: any) {
@@ -382,22 +310,6 @@ app.post("/api/announcements", authenticateToken, isAdmin, upload.single("image"
     
     db.prepare("INSERT INTO announcements (title, body, date, category, imagePath, authorId) VALUES (?, ?, ?, ?, ?, ?)")
       .run(cleanTitle, cleanBody, date, category || 'Announcement', imagePath, req.user.id);
-
-    // Send Notification Emails in background
-    const students = db.prepare("SELECT firstName, email FROM users WHERE role = 'student'").all() as any[];
-    const subject = `New ${category || 'Announcement'} from Science Laboratory Technology Department`;
-    
-    students.forEach(student => {
-      const announcementHtml = getEmailTemplate(
-        `<p>Hello ${student.firstName},</p>
-         <p>A new ${category?.toLowerCase() || 'announcement'} has been published:</p>
-         <h2 style="color: #0f172a;">${cleanTitle}</h2>
-         <p>${cleanBody.substring(0, 100)}${cleanBody.length > 100 ? '...' : ''}</p>`,
-        "Read More",
-        `${APP_URL}/news`
-      );
-      sendEmail(student.email, subject, announcementHtml);
-    });
 
     res.json({ success: true });
   } catch (error: any) {
