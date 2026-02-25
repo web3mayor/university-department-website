@@ -1,0 +1,5 @@
+{
+  "name": "University Department Portal",
+  "description": "A comprehensive portal for university departments featuring student authentication, news announcements, course material sharing, and an admin management dashboard.",
+  "requestFramePermissions": []
+}
