@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { motion } from 'motion/react';
 import { ShieldCheck, Mail, Lock, AlertCircle } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 export default function AdminLogin() {
   const [email, setEmail] = useState('');
@@ -18,25 +19,31 @@ export default function AdminLogin() {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
-      const data = await res.json();
 
-      if (res.ok) {
-        if (data.user.role !== 'admin') {
+      if (authError) throw authError;
+
+      if (data.session) {
+        // Verify if user is in admin table
+        const { data: adminData } = await supabase
+          .from('admin')
+          .select('*')
+          .eq('id', data.session.user.id)
+          .single();
+
+        if (!adminData) {
+          await supabase.auth.signOut();
           setError('Access denied. Admin credentials required.');
           return;
         }
-        login(data.token, data.user);
+
         navigate('/admin');
-      } else {
-        setError(data.error || 'Login failed');
       }
-    } catch (err) {
-      setError('An error occurred. Please try again.');
+    } catch (err: any) {
+      setError(err.message || 'An error occurred. Please try again.');
     } finally {
       setLoading(false);
     }

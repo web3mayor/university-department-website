@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { UserPlus, Mail, Lock, Phone, User, Hash, GraduationCap, AlertCircle } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -32,20 +33,30 @@ export default function Register() {
 
     setLoading(true);
     try {
-      const res = await fetch('/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
       });
-      const data = await res.json();
 
-      if (res.ok) {
+      if (authError) throw authError;
+
+      if (authData.user) {
+        const { error: dbError } = await supabase.from('users').insert([{
+          id: authData.user.id,
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          email: formData.email,
+          phone_number: formData.phone,
+          level: formData.level,
+          matric_number: formData.matricNumber,
+        }]);
+
+        if (dbError) throw dbError;
+        
         navigate('/login');
-      } else {
-        setError(data.error || 'Registration failed');
       }
-    } catch (err) {
-      setError('An error occurred. Please try again.');
+    } catch (err: any) {
+      setError(err.message || 'An error occurred. Please try again.');
     } finally {
       setLoading(false);
     }

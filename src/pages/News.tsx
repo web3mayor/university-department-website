@@ -5,14 +5,15 @@ import { useAuth } from '../context/AuthContext';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { AnimatePresence } from 'motion/react';
+import { supabase } from '../lib/supabase';
 
 interface Announcement {
   id: number;
   title: string;
   body: string;
-  date: string;
+  created_at: string;
   category: string;
-  imagePath: string | null;
+  image_url: string | null;
 }
 
 export default function News() {
@@ -21,13 +22,10 @@ export default function News() {
   const [loading, setLoading] = useState(true);
   const [postToDelete, setPostToDelete] = useState<number | null>(null);
 
-  const fetchAnnouncements = () => {
-    fetch('/api/announcements')
-      .then(res => res.json())
-      .then(data => {
-        setAnnouncements(data);
-        setLoading(false);
-      });
+  const fetchAnnouncements = async () => {
+    const { data } = await supabase.from('news').select('*').order('created_at', { ascending: false });
+    setAnnouncements(data || []);
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -35,12 +33,8 @@ export default function News() {
   }, []);
 
   const handleDelete = async (id: number) => {
-    const res = await fetch(`/api/announcements/${id}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    
-    if (res.ok) {
+    const { error } = await supabase.from('news').delete().eq('id', id);
+    if (!error) {
       setAnnouncements(announcements.filter(a => a.id !== id));
     }
     setPostToDelete(null);
@@ -76,17 +70,17 @@ export default function News() {
                 className="bg-white rounded-3xl overflow-hidden shadow-sm border border-slate-200 hover:shadow-xl transition-all group"
               >
                 <div className="flex flex-col md:flex-row">
-                  {item.imagePath && (
+                  {item.image_url && (
                     <div className="md:w-2/5 h-64 md:h-auto overflow-hidden">
                       <img 
-                        src={`/uploads/${item.imagePath}`} 
+                        src={item.image_url} 
                         alt={item.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         referrerPolicy="no-referrer"
                       />
                     </div>
                   )}
-                  <div className={`p-8 md:p-10 flex-grow ${item.imagePath ? 'md:w-3/5' : 'w-full'}`}>
+                  <div className={`p-8 md:p-10 flex-grow ${item.image_url ? 'md:w-3/5' : 'w-full'}`}>
                     <div className="flex items-center justify-between mb-6">
                       <div className="flex items-center space-x-3">
                         <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
@@ -96,7 +90,7 @@ export default function News() {
                         </span>
                         <div className="flex items-center text-xs text-slate-400 font-medium space-x-1">
                           <Calendar className="h-3.5 w-3.5" />
-                          <span>{format(new Date(item.date), 'MMMM do, yyyy')}</span>
+                          <span>{format(new Date(item.created_at), 'MMMM do, yyyy')}</span>
                         </div>
                       </div>
                       {user?.role === 'admin' && (

@@ -3,14 +3,15 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Calendar, ArrowLeft, Megaphone, User } from 'lucide-react';
 import { format } from 'date-fns';
+import { supabase } from '../lib/supabase';
 
 interface Announcement {
   id: number;
   title: string;
   body: string;
-  date: string;
+  created_at: string;
   category: string;
-  imagePath: string | null;
+  image_url: string | null;
 }
 
 export default function NewsDetail() {
@@ -20,18 +21,16 @@ export default function NewsDetail() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`/api/announcements/${id}`)
-      .then(res => {
-        if (!res.ok) throw new Error('Not found');
-        return res.json();
-      })
-      .then(data => {
+    const fetchNews = async () => {
+      const { data, error } = await supabase.from('news').select('*').eq('id', id).single();
+      if (error || !data) {
+        navigate('/news');
+      } else {
         setAnnouncement(data);
         setLoading(false);
-      })
-      .catch(() => {
-        navigate('/news');
-      });
+      }
+    };
+    fetchNews();
   }, [id, navigate]);
 
   if (loading) {
@@ -60,10 +59,10 @@ export default function NewsDetail() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-white rounded-3xl overflow-hidden shadow-xl border border-slate-200"
         >
-          {announcement.imagePath && (
+          {announcement.image_url && (
             <div className="w-full h-[400px] overflow-hidden">
               <img 
-                src={`/uploads/${announcement.imagePath}`} 
+                src={announcement.image_url} 
                 alt={announcement.title}
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"
@@ -80,7 +79,7 @@ export default function NewsDetail() {
               </span>
               <div className="flex items-center text-sm text-slate-400 font-medium space-x-2">
                 <Calendar className="h-4 w-4" />
-                <span>{format(new Date(announcement.date), 'MMMM do, yyyy')}</span>
+                <span>{format(new Date(announcement.created_at), 'MMMM do, yyyy')}</span>
               </div>
             </div>
 
